@@ -77,6 +77,8 @@ fun MainAppScreen(viewModel: AppViewModel) {
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val accessRole by viewModel.accessRole.collectAsStateWithLifecycle()
     val uiMessage by viewModel.uiMessage.collectAsStateWithLifecycle()
+    val currentLang by viewModel.appLanguage.collectAsStateWithLifecycle()
+    fun t(en: String, bn: String): String = if (currentLang == "en") en else bn
 
     val products by viewModel.products.collectAsStateWithLifecycle()
     val sales by viewModel.sales.collectAsStateWithLifecycle()
@@ -104,7 +106,7 @@ fun MainAppScreen(viewModel: AppViewModel) {
                         )
                     )
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -113,30 +115,32 @@ fun MainAppScreen(viewModel: AppViewModel) {
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .background(Color.White.copy(alpha = 0.2f), RoundedCornerShape(10.dp)),
+                                .size(34.dp)
+                                .background(Color.White.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PhoneAndroid,
                                 contentDescription = "Logo",
-                                tint = Color.White
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                         Column {
                             Text(
-                                text = "আহমেদ টেলিকম",
-                                fontSize = 19.sp,
+                                text = t("Tushar Tech", "তুষার টেক"),
+                                fontSize = 16.sp,
                                 fontWeight = FontWeight.Black,
                                 color = Color.White
                             )
                             Text(
-                                text = "শাহী মার্কেট, পুরান থানা, কিশোরগঞ্জ",
-                                fontSize = 11.sp,
+                                text = t("Sales & Service", "সেলস ও সার্ভিস"),
+                                fontSize = 9.5.sp,
                                 color = Color.White.copy(alpha = 0.85f),
                                 fontWeight = FontWeight.Bold
                             )
@@ -147,6 +151,45 @@ fun MainAppScreen(viewModel: AppViewModel) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        // Language Switching Toggle Tab group
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White.copy(alpha = 0.15f))
+                                .padding(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (currentLang == "bn") Color.White else Color.Transparent)
+                                    .clickable { viewModel.setLanguage("bn") }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "বাংলা",
+                                    color = if (currentLang == "bn") Color(0xFF1E3A8A) else Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (currentLang == "en") Color.White else Color.Transparent)
+                                    .clickable { viewModel.setLanguage("en") }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "Eng",
+                                    color = if (currentLang == "en") Color(0xFF1E3A8A) else Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
                         IconButton(
                             onClick = { showBackupDialog = true },
                             modifier = Modifier
@@ -178,7 +221,7 @@ fun MainAppScreen(viewModel: AppViewModel) {
                                         .background(Color(0xFF6EE7B7), RoundedCornerShape(3.dp))
                                 )
                                 Text(
-                                    text = "অনলাইন সিঙ্ক",
+                                    text = t("Online Sync", "অনলাইন সিঙ্ক"),
                                     color = Color(0xFFD1FAE5),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold
@@ -281,6 +324,13 @@ fun formatBanglaNumber(amount: Double): String {
         ',' to ',', '.' to '.'
     )
     return enStr.map { banglaDigits[it] ?: it }.joinToString("")
+}
+
+fun formatLangNumber(amount: Double, lang: String): String {
+    if (lang == "en") {
+        return String.format(Locale.US, "%,.0f", amount)
+    }
+    return formatBanglaNumber(amount)
 }
 
 fun getBengaliMonthName(engMonth: String): String {
@@ -1211,6 +1261,9 @@ fun EditCashbackDialog(
 @Composable
 fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val lang = remember { getAppLanguage(context) }
+    fun t(en: String, bn: String): String = if (lang == "en") en else bn
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -1225,23 +1278,23 @@ fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Header (Traditional scroll thermal print indicator)
-                Text(text = "--- কাস্টমার মেমো রশিদ ---", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(text = t("--- CUSTOMER CASH RECEIPT ---", "--- কাস্টমার মেমো রশিদ ---"), color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(text = "আহমেদ টেলিকম", fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFF1E3A8A))
-                Text(text = "মোবাইল শপ ও বিশ্বস্ত সার্ভিস সেন্টার", fontSize = 10.sp, color = Color.Gray)
-                Text(text = "শাহী মার্কেট, পুরান থানা, কিশোরগঞ্জ", fontSize = 10.sp, color = Color.Gray)
-                Text(text = "মোবাইল: ০১৭৬৫-৪৬৪৫৯০", fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
+                Text(text = t("Tushar Tech", "তুষার টেক"), fontSize = 18.sp, fontWeight = FontWeight.Black, color = Color(0xFF1E3A8A))
+                Text(text = t("Mobile shop & reliable service", "মোবাইল শপ ও বিশ্বস্ত সার্ভিস সেন্টার"), fontSize = 10.sp, color = Color.Gray)
+                Text(text = t("Shahi Market, Puran Thana, Kishoreganj", "শাহী মার্কেট, পুরান থানা, কিশোরগঞ্জ"), fontSize = 10.sp, color = Color.Gray)
+                Text(text = t("Mobile: 01765-464590", "মোবাইল: ০১৭৬৫-৪৬৪৫৯০"), fontSize = 10.sp, color = Color.Gray, fontWeight = FontWeight.Bold)
 
                 // Dashed separator
                 Text(text = "------------------------------------------", color = Color.LightGray, fontSize = 12.sp)
 
                 // Ledger Specifics
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    ReceiptRow(label = "মেমো নং:", value = sale.memoNo)
-                    ReceiptRow(label = "তারিখ:", value = sale.date)
-                    ReceiptRow(label = "মাস হিসাব:", value = getBengaliMonthName(sale.month))
-                    sale.customerName?.let { ReceiptRow(label = "ক্রেতার নাম:", value = it) }
-                    sale.customerPhone?.let { ReceiptRow(label = "মোবাইল:", value = it) }
+                    ReceiptRow(label = t("Memo No:", "মেমো নং:"), value = sale.memoNo)
+                    ReceiptRow(label = t("Date:", "তারিখ:"), value = sale.date)
+                    ReceiptRow(label = t("Month Ledger:", "মাস হিসাব:"), value = if (lang == "en") sale.month else getBengaliMonthName(sale.month))
+                    sale.customerName?.let { ReceiptRow(label = t("Customer Name:", "ক্রেতার নাম:"), value = it) }
+                    sale.customerPhone?.let { ReceiptRow(label = t("Mobile:", "মোবাইল:"), value = it) }
                 }
 
                 Text(text = "------------------------------------------", color = Color.LightGray, fontSize = 12.sp)
@@ -1254,30 +1307,30 @@ fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = sale.model, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text(text = "ভেরিয়েন্ট: ${sale.variant}", fontSize = 10.sp, color = Color.Gray)
+                        Text(text = "${t("Variant:", "ভেরিয়েন্ট:")} ${sale.variant}", fontSize = 10.sp, color = Color.Gray)
                         sale.imei?.let { Text(text = "IMEI: $it", fontSize = 10.sp, color = Color.Gray) }
                     }
-                    Text(text = "৳ ${formatBanglaNumber(sale.sellingPrice)}", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
+                    Text(text = "৳ ${formatLangNumber(sale.sellingPrice, lang)}", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
                 }
 
                 Text(text = "------------------------------------------", color = Color.LightGray, fontSize = 12.sp)
 
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    ReceiptRow(label = "ফোন মূল্য:", value = "৳ ${formatBanglaNumber(sale.sellingPrice)}")
-                    ReceiptRow(label = "সর্বমোট পরিশোধিত:", value = "৳ ${formatBanglaNumber(sale.sellingPrice)}")
+                    ReceiptRow(label = t("Phone price:", "ফোন মূল্য:"), value = "৳ ${formatLangNumber(sale.sellingPrice, lang)}")
+                    ReceiptRow(label = t("Total Paid:", "সর্বমোট পরিশোধিত:"), value = "৳ ${formatLangNumber(sale.sellingPrice, lang)}")
                 }
 
                 Text(text = "------------------------------------------", color = Color.LightGray, fontSize = 12.sp)
 
                 Text(
-                    text = "পণ্য ক্রয়ের জন্য আপনাকে ধন্যবাদ!",
+                    text = t("Thank you for purchasing dynamic products!", "পণ্য ক্রয়ের জন্য আপনাকে ধন্যবাদ!"),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.DarkGray,
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "আবার আসবেন। মেমো বুক ডিজিটাল খাতা দ্বারা জেনারেটেড।",
+                    text = t("Please come again. Generated by Tushar Tech digital notebook.", "আবার আসবেন। মেমো বুক ডিজিটাল খাতা দ্বারা জেনারেটেড।"),
                     fontSize = 9.sp,
                     color = Color.Gray,
                     textAlign = TextAlign.Center
@@ -1299,7 +1352,7 @@ fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "পিডিএফ ডাউনলোড ও শেয়ার", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(text = t("Download & Share PDF", "পিডিএফ ডাউনলোড ও শেয়ার"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1309,7 +1362,7 @@ fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = "রশিদ বন্ধ করুন", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E3A8A))
+                    Text(text = t("Close Receipt", "রশিদ বন্ধ করুন"), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E3A8A))
                 }
             }
         }
@@ -1317,6 +1370,9 @@ fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
 }
 
 fun generateAndShareMemoPdf(context: android.content.Context, sale: SaleEntity) {
+    val lang = getAppLanguage(context)
+    fun t(en: String, bn: String): String = if (lang == "en") en else bn
+
     val pdfDocument = PdfDocument()
     
     // Page dimensions: 595 x 842 (A4 size dimensions in PostScript points)
@@ -1338,17 +1394,17 @@ fun generateAndShareMemoPdf(context: android.content.Context, sale: SaleEntity) 
     paint.color = android.graphics.Color.WHITE
     paint.textSize = 24f
     paint.isFakeBoldText = true
-    canvas.drawText("আহমেদ টেলিকম", 60f, 85f, paint)
+    canvas.drawText(t("Tushar Tech", "তুষার টেক"), 60f, 85f, paint)
     
     paint.textSize = 10f
     paint.isFakeBoldText = false
-    canvas.drawText("মোবাইল শপ ও বিশ্বস্ত সার্ভিস সেন্টার | শাহী মার্কেট, পুরান থানা, কিশোরগঞ্জ", 60f, 110f, paint)
+    canvas.drawText(t("Mobile Sales & Reliable Service | Shahi Market, Kishoreganj", "মোবাইল শপ ও বিশ্বস্ত সার্ভিস সেন্টার | শাহী মার্কেট, পুরান থানা, কিশোরগঞ্জ"), 60f, 110f, paint)
     
     // Document Title
     paint.color = android.graphics.Color.parseColor("#1E3A8A")
     paint.textSize = 16f
     paint.isFakeBoldText = true
-    canvas.drawText("কাস্টমার ক্যাশ মেমো / বিক্রয় রশিদ", 40f, 170f, paint)
+    canvas.drawText(t("Customer Cash Memo / Receipt", "কাস্টমার ক্যাশ মেমো / বিক্রয় রশিদ"), 40f, 170f, paint)
     
     // Divider line
     paint.strokeWidth = 2f
@@ -1362,16 +1418,16 @@ fun generateAndShareMemoPdf(context: android.content.Context, sale: SaleEntity) 
     var currentY = 220f
     
     val detailsLeft = listOf(
-        "মেমো নং: ${sale.memoNo}",
-        "তারিখ: ${sale.date}",
-        "হিসাব খাতা মাস: ${getBengaliMonthName(sale.month)}"
+        "${t("Memo No:", "মেমো নং:")} ${sale.memoNo}",
+        "${t("Date:", "তারিখ:")} ${sale.date}",
+        "${t("Month Ledger:", "হিসাব খাতা মাস:")} ${if (lang == "en") sale.month else getBengaliMonthName(sale.month)}"
     )
     
     val customerNameText = sale.customerName ?: "N/A"
     val customerPhoneText = sale.customerPhone ?: "N/A"
     val detailsRight = listOf(
-        "ক্রেতার নাম: $customerNameText",
-        "ক্রেতার মোবাইল: $customerPhoneText"
+        "${t("Customer Name:", "ক্রেতার নাম:")} $customerNameText",
+        "${t("Customer Phone:", "ক্রেতার মোবাইল:")} $customerPhoneText"
     )
     
     for (i in detailsLeft.indices) {
@@ -1390,23 +1446,23 @@ fun generateAndShareMemoPdf(context: android.content.Context, sale: SaleEntity) 
     
     paint.color = android.graphics.Color.BLACK
     paint.isFakeBoldText = true
-    canvas.drawText("ক্রয়কৃত মোবাইল বিবরণ", 50f, currentY + 20f, paint)
-    canvas.drawText("মূল্য (টাকা)", 460f, currentY + 20f, paint)
+    canvas.drawText(t("Purchased Item Details", "ক্রয়কৃত মোবাইল বিবরণ"), 50f, currentY + 20f, paint)
+    canvas.drawText(t("Price (Taka)", "মূল্য (টাকা)"), 460f, currentY + 20f, paint)
     
     currentY += 30f
     paint.isFakeBoldText = false
     
     // Draw Product Row
     currentY += 30f
-    canvas.drawText("মডেল: ${sale.model}", 50f, currentY, paint)
-    canvas.drawText("৳ ${formatBanglaNumber(sale.sellingPrice)}", 460f, currentY, paint)
+    canvas.drawText("${t("Model:", "মডেল:")} ${sale.model}", 50f, currentY, paint)
+    canvas.drawText("৳ ${formatLangNumber(sale.sellingPrice, lang)}", 460f, currentY, paint)
     
     currentY += 20f
-    canvas.drawText("ভেরিয়েন্ট: ${sale.variant}", 50f, currentY, paint)
+    canvas.drawText("${t("Variant:", "ভেরিয়েন্ট:")} ${sale.variant}", 50f, currentY, paint)
     
     sale.imei?.let {
         currentY += 20f
-        canvas.drawText("IMEI নম্বর: $it", 50f, currentY, paint)
+        canvas.drawText("IMEI: $it", 50f, currentY, paint)
     }
     
     currentY += 30f
@@ -1418,14 +1474,14 @@ fun generateAndShareMemoPdf(context: android.content.Context, sale: SaleEntity) 
     currentY += 30f
     paint.color = android.graphics.Color.BLACK
     paint.isFakeBoldText = true
-    canvas.drawText("সর্বমোট পরিশোধিত মূল্য:", 300f, currentY, paint)
-    canvas.drawText("৳ ${formatBanglaNumber(sale.sellingPrice)}", 460f, currentY, paint)
+    canvas.drawText(t("Total Paid:", "সর্বমোট পরিশোধিত মূল্য:"), 300f, currentY, paint)
+    canvas.drawText("৳ ${formatLangNumber(sale.sellingPrice, lang)}", 460f, currentY, paint)
     
     currentY += 100f
     paint.color = android.graphics.Color.GRAY
     paint.textSize = 10f
     paint.isFakeBoldText = false
-    canvas.drawText("* ক্রয়কৃত পণ্য কোনো অবস্থাতেই ফেরতযোগ্য নয়। মেমো বুক ডিজিটাল খাতা দ্বারা জেনারেটেড।", 50f, currentY, paint)
+    canvas.drawText(t("* Purchased items are non-refundable. Generated by Tushar Tech.", "* ক্রয়কৃত পণ্য কোনো অবস্থাতেই ফেরতযোগ্য নয়। মেমো বুক ডিজিটাল খাতা দ্বারা জেনারেটেড।"), 50f, currentY, paint)
     
     pdfDocument.finishPage(page)
     
@@ -1444,12 +1500,12 @@ fun generateAndShareMemoPdf(context: android.content.Context, sale: SaleEntity) 
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "application/pdf"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "ক্যাশ মেমো #${sale.memoNo}")
-            putExtra(Intent.EXTRA_TEXT, "আহমেদ টেলিকম থেকে কস্টমার ক্যাশ মেমো রশিদ")
+            putExtra(Intent.EXTRA_SUBJECT, t("Cash Memo #${sale.memoNo}", "ক্যাম্পেইন ক্যাশ মেমো #${sale.memoNo}"))
+            putExtra(Intent.EXTRA_TEXT, t("Cash memo receipt from Tushar Tech", "তুষার টেক থেকে কস্টমার ক্যাশ মেমো রশিদ"))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "পিডিএফ শেয়ার করুন"))
-        Toast.makeText(context, "পিডিএফ মেমো তৈরি সম্পন্ন হয়েছে এবং শেয়ার করার জন্য প্রস্তুত!", Toast.LENGTH_SHORT).show()
+        context.startActivity(Intent.createChooser(intent, t("Share PDF", "পিডিএফ শেয়ার করুন")))
+        Toast.makeText(context, t("PDF Memo generated & ready to share!", "পিডিএফ মেমো তৈরি সম্পন্ন হয়েছে এবং শেয়ার করার জন্য প্রস্তুত!"), Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
         pdfDocument.close()
         Toast.makeText(context, "পিডিএফ তৈরি করতে ত্রুটি: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
@@ -1780,16 +1836,20 @@ fun ReportsTabScreen(
                             csv.append("${it.memoNo},${it.date},${it.model},${it.variant},${it.dpAtSale},${it.sellingPrice},${it.cashback},${it.profit},${it.customerName ?: ""},${it.customerPhone ?: ""},${it.imei ?: ""}\n")
                         }
                         
+                        val isEn = viewModel.appLanguage.value == "en"
                         val sendIntent = Intent().apply {
                             action = Intent.ACTION_SEND
                             putExtra(Intent.EXTRA_TEXT, csv.toString())
-                            putExtra(Intent.EXTRA_TITLE, "Ahmed Telecom ${activeMonth} Excel Sheet Report")
+                            putExtra(Intent.EXTRA_TITLE, if (isEn) "Tushar Tech ${activeMonth} Excel Sheet Report" else "তুষার টেক ${getBengaliMonthName(activeMonth)} এক্সেল রিপোর্ট বিবরণী")
                             type = "text/plain"
                         }
-                        val shareIntent = Intent.createChooser(sendIntent, "এক্সেল রিদমেবল ডাটা ফাইল হোয়াটসঅ্যাপে পাঠান")
+                        val shareIntent = Intent.createChooser(sendIntent, if (isEn) "Send Excel csv file via..." else "এক্সেল রিদমেবল ডাটা ফাইল হোয়াটসঅ্যাপে পাঠান")
                         shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         localContext.startActivity(shareIntent)
-                        viewModel.showMessage(UiMessage.Success("মাসিক এক্সেল ডাটা বিবরণী জেনারেট হয়েছে!"))
+                        viewModel.showMessage(
+                            if (isEn) UiMessage.Success("Monthly Excel data sheet generated successfully!")
+                            else UiMessage.Success("মাসিক এক্সেল ডাটা বিবরণী জেনারেট হয়েছে!")
+                        )
                     }
                 },
                 modifier = Modifier
@@ -2047,8 +2107,36 @@ fun ImeiScannerDialog(
     onDismiss: () -> Unit,
     onBarcodeScanned: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val lang = remember { getAppLanguage(context) }
+    fun t(en: String, bn: String): String = if (lang == "en") en else bn
+
     var rawInput by remember { mutableStateOf("") }
     
+    // Permission launcher
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.CAMERA
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            hasCameraPermission = granted
+        }
+    )
+
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            launcher.launch(android.Manifest.permission.CAMERA)
+        }
+    }
+
     // Auto-generate high-fidelity simulated barcode Suggestions based on the phone model selector
     val mockImeis = remember(selectedModel) {
         val random = java.util.Random()
@@ -2080,7 +2168,7 @@ fun ImeiScannerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "📷 ক্যামেরা আইএমইআই (IMEI) স্ক্যানার", 
+                        text = t("📷 Camera IMEI Scanner", "📷 জিজ্ঞাসা ক্যামেরা আইএমইআই (IMEI) স্ক্যানার"), 
                         color = Color.White, 
                         fontSize = 15.sp, 
                         fontWeight = FontWeight.Bold
@@ -2091,7 +2179,7 @@ fun ImeiScannerDialog(
                 }
 
                 Text(
-                    text = "আপনার ফোনের লাইভ ক্যামেরা প্রিভিউ অ্যাক্টিভ করা হচ্ছে...",
+                    text = if (hasCameraPermission) t("Live camera preview is active...", "আপনার ফোনের লাইভ ক্যামেরা প্রিভিউ অ্যাক্টিভ করা হচ্ছে...") else t("Camera permission is required.", "ক্যামেরা পারমিশন আবশ্যক।"),
                     color = Color.Gray,
                     fontSize = 11.sp,
                     textAlign = TextAlign.Center
@@ -2109,99 +2197,153 @@ fun ImeiScannerDialog(
                     label = "laserPosition"
                 )
 
-                Box(
-                    modifier = Modifier
-                        .size(width = 260.dp, height = 150.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black)
-                        .border(1.5.dp, Color(0xFF10B981), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.TopCenter
-                ) {
-                    // Viewport guidelines corners
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val thickness = 3.dp.toPx()
-                        
-                        // Top-left corner arc
-                        drawArc(
-                            color = Color(0xFF10B981),
-                            startAngle = 180f,
-                            sweepAngle = 90f,
-                            useCenter = false,
-                            topLeft = androidx.compose.ui.geometry.Offset(8.dp.toPx(), 8.dp.toPx()),
-                            size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
-                        )
-                        // Top-right corner arc
-                        drawArc(
-                            color = Color(0xFF10B981),
-                            startAngle = 270f,
-                            sweepAngle = 90f,
-                            useCenter = false,
-                            topLeft = androidx.compose.ui.geometry.Offset(size.width - 32.dp.toPx(), 8.dp.toPx()),
-                            size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
-                        )
-                        // Bottom-left corner arc
-                        drawArc(
-                            color = Color(0xFF10B981),
-                            startAngle = 90f,
-                            sweepAngle = 90f,
-                            useCenter = false,
-                            topLeft = androidx.compose.ui.geometry.Offset(8.dp.toPx(), size.height - 32.dp.toPx()),
-                            size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
-                        )
-                        // Bottom-right corner arc
-                        drawArc(
-                            color = Color(0xFF10B981),
-                            startAngle = 0f,
-                            sweepAngle = 90f,
-                            useCenter = false,
-                            topLeft = androidx.compose.ui.geometry.Offset(size.width - 32.dp.toPx(), size.height - 32.dp.toPx()),
-                            size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
-                        )
-                    }
-
-                    // Viewfinder focus sweeper red laser bar
+                if (hasCameraPermission) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .offset(y = laserY.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(Color.Red, Color.Red.copy(alpha = 0.5f))
-                                )
-                            )
-                            .border(1.dp, Color.Red)
-                    )
-
-                    // Overlay guidance text
-                    Column(
-                        modifier = Modifier.fillMaxSize().padding(12.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .size(width = 260.dp, height = 150.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black)
+                            .border(1.5.dp, Color(0xFF10B981), RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.TopCenter
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = "scanning logo",
-                            tint = Color.White.copy(alpha = 0.25f),
-                            modifier = Modifier.size(32.dp)
+                        androidx.compose.ui.viewinterop.AndroidView(
+                            factory = { ctx ->
+                                val previewView = androidx.camera.view.PreviewView(ctx).apply {
+                                    scaleType = androidx.camera.view.PreviewView.ScaleType.FILL_CENTER
+                                }
+                                val cameraProviderFuture = androidx.camera.lifecycle.ProcessCameraProvider.getInstance(ctx)
+                                cameraProviderFuture.addListener({
+                                    try {
+                                        val cameraProvider = cameraProviderFuture.get()
+                                        val preview = androidx.camera.core.Preview.Builder().build().also {
+                                            it.setSurfaceProvider(previewView.surfaceProvider)
+                                        }
+
+                                        val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
+                                            .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                            .build()
+                                            .also {
+                                                it.setAnalyzer(
+                                                    androidx.core.content.ContextCompat.getMainExecutor(ctx),
+                                                    ImeiImageAnalyzer { detectedImei ->
+                                                        onBarcodeScanned(detectedImei)
+                                                        onDismiss()
+                                                    }
+                                                )
+                                            }
+
+                                        cameraProvider.unbindAll()
+                                        cameraProvider.bindToLifecycle(
+                                            lifecycleOwner,
+                                            androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA,
+                                            preview,
+                                            imageAnalysis
+                                        )
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("ImeiScanner", "Camera initialization or binding failed", e)
+                                    }
+                                }, androidx.core.content.ContextCompat.getMainExecutor(ctx))
+                                previewView
+                            },
+                            modifier = Modifier.fillMaxSize()
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "বারকোড / আইএমইআই ফোকাস করুন",
-                            color = Color.White.copy(alpha = 0.4f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+
+                        // Viewport guidelines corners
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val thickness = 3.dp.toPx()
+                            
+                            // Top-left corner arc
+                            drawArc(
+                                color = Color(0xFF10B981),
+                                startAngle = 180f,
+                                sweepAngle = 90f,
+                                useCenter = false,
+                                topLeft = androidx.compose.ui.geometry.Offset(8.dp.toPx(), 8.dp.toPx()),
+                                size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
+                            )
+                            // Top-right corner arc
+                            drawArc(
+                                color = Color(0xFF10B981),
+                                startAngle = 270f,
+                                sweepAngle = 90f,
+                                useCenter = false,
+                                topLeft = androidx.compose.ui.geometry.Offset(size.width - 32.dp.toPx(), 8.dp.toPx()),
+                                size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
+                            )
+                            // Bottom-left corner arc
+                            drawArc(
+                                color = Color(0xFF10B981),
+                                startAngle = 90f,
+                                sweepAngle = 90f,
+                                useCenter = false,
+                                topLeft = androidx.compose.ui.geometry.Offset(8.dp.toPx(), size.height - 32.dp.toPx()),
+                                size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
+                            )
+                            // Bottom-right corner arc
+                            drawArc(
+                                color = Color(0xFF10B981),
+                                startAngle = 0f,
+                                sweepAngle = 90f,
+                                useCenter = false,
+                                topLeft = androidx.compose.ui.geometry.Offset(size.width - 32.dp.toPx(), size.height - 32.dp.toPx()),
+                                size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
+                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
+                            )
+                        }
+
+                        // Viewfinder focus sweeper red laser bar
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .offset(y = laserY.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Red, Color.Red.copy(alpha = 0.5f))
+                                    )
+                                )
+                                .border(1.dp, Color.Red)
                         )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 260.dp, height = 150.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF1E293B)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.VideocamOff, contentDescription = "No Camera", tint = Color.LightGray)
+                            Text(
+                                text = t("Camera permission required", "ক্যামেরা পারমিশন প্রয়োজন"),
+                                color = Color.LightGray,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Button(
+                                onClick = { launcher.launch(android.Manifest.permission.CAMERA) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(t("Grant", "অনুমতি দিন"), fontSize = 10.sp, color = Color.White)
+                            }
+                        }
                     }
                 }
 
                 // Emulator test helpers notice header
                 Text(
-                    text = "💡 ব্রাউজার টেস্ট করতে কোড জেনারেটর:",
+                    text = t("💡 Demo Code Generator:", "💡 ব্রাউজার টেস্ট করতে কোড জেনারেটর:"),
                     color = Color(0xFF34D399),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -2216,7 +2358,7 @@ fun ImeiScannerDialog(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "টেস্ট করার জন্য নিচে অটোমেটিকালি ডিটেক্ট করা ডেমো আইএমইআই জেনারেট হয়েছে। জাস্ট টাচ করলেই ইনপুট হয়ে যাবে!",
+                        text = t("Generated demo IMEIs are shown below to help with tests in emulators. Click to input instantly!", "টেস্ট করার জন্য নিচে অটোমেটিকালি ডিটেক্ট করা ডেমো আইএমইআই জেনারেট হয়েছে। জাস্ট টাচ করলেই ইনপুট হয়ে যাবে!"),
                         color = Color.LightGray,
                         fontSize = 10.sp,
                         lineHeight = 14.sp
@@ -2244,7 +2386,7 @@ fun ImeiScannerDialog(
                                     fontSize = 11.sp, 
                                     fontWeight = FontWeight.Bold
                                 )
-                                Text(text = "টাচ দিন ⚡", color = Color.White, fontSize = 10.sp)
+                                Text(text = t("Tap ⚡", "টাচ দিন ⚡"), color = Color.White, fontSize = 10.sp)
                             }
                         }
                     }
@@ -2254,7 +2396,7 @@ fun ImeiScannerDialog(
                 OutlinedTextField(
                     value = rawInput,
                     onValueChange = { rawInput = it },
-                    label = { Text("ম্যানুয়ালি আইএমইআই লিখুন", color = Color.Gray, fontSize = 11.sp) },
+                    label = { Text(t("Enter IMEI Manually", "ম্যানুয়ালি আইএমইআই লিখুন"), color = Color.Gray, fontSize = 11.sp) },
                     textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF10B981),
@@ -2273,7 +2415,7 @@ fun ImeiScannerDialog(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(text = "বন্ধ করুন", color = Color.Gray, fontSize = 12.sp)
+                        Text(text = t("Close", "বন্ধ করুন"), color = Color.Gray, fontSize = 12.sp)
                     }
 
                     Button(
@@ -2287,10 +2429,51 @@ fun ImeiScannerDialog(
                         modifier = Modifier.weight(1.5f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text(text = "ইনপুট নিশ্চিত করুন", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text(text = t("Confirm Input", "ইনপুট নিশ্চিত করুন"), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
+        }
+    }
+}
+
+fun getAppLanguage(context: android.content.Context): String {
+    val prefs = context.getSharedPreferences("TusharTechPrefs", android.content.Context.MODE_PRIVATE)
+    return prefs.getString("lang", "bn") ?: "bn"
+}
+
+@OptIn(androidx.camera.core.ExperimentalGetImage::class)
+class ImeiImageAnalyzer(
+    private val onBarcodeDetected: (String) -> Unit
+) : androidx.camera.core.ImageAnalysis.Analyzer {
+    private val scanner = com.google.mlkit.vision.barcode.BarcodeScanning.getClient(
+        com.google.mlkit.vision.barcode.BarcodeScannerOptions.Builder()
+            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ALL_FORMATS)
+            .build()
+    )
+
+    override fun analyze(imageProxy: androidx.camera.core.ImageProxy) {
+        val mediaImage = imageProxy.image
+        if (mediaImage != null) {
+            val image = com.google.mlkit.vision.common.InputImage.fromMediaImage(
+                mediaImage,
+                imageProxy.imageInfo.rotationDegrees
+            )
+            scanner.process(image)
+                .addOnSuccessListener { barcodes ->
+                    for (barcode in barcodes) {
+                        val rawValue = barcode.rawValue
+                        if (rawValue != null && rawValue.isNotBlank()) {
+                            onBarcodeDetected(rawValue)
+                            break
+                        }
+                    }
+                }
+                .addOnCompleteListener {
+                    imageProxy.close()
+                }
+        } else {
+            imageProxy.close()
         }
     }
 }

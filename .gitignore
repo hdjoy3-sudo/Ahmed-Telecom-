@@ -1,18 +1,44 @@
 *.iml
 .gradle
+**/.gradle/
 .kotlin
+**/.kotlin/
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
+local.properties
+secrets.properties
+.env
+
+# Android Studio / IntelliJ files
+.idea/
+**/.idea/
+*.iws
+*.ipr
+/out/
+
+# Build and generate artifacts
+build/
+**/build/
 /build
 /captures
 .externalNativeBuild
 .cxx
-local.properties
-.env
+
+# AI Studio Workspace & Build Outputs
+.build-outputs/
+**/.build-outputs/
+extracted_strings.txt
+remote_css.txt
+remote_js.txt
 debug.keystore
+debug.keystore.base64
+
+# Binary outputs
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Miscellaneous
+.DS_Store
+Thumbs.db

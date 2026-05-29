@@ -39,6 +39,16 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentTab = MutableStateFlow("products")
     val currentTab: StateFlow<String> = _currentTab.asStateFlow()
 
+    // App Language preference: "bn" is Bangla, "en" is English
+    private val prefs = getApplication<Application>().getSharedPreferences("TusharTechPrefs", Context.MODE_PRIVATE)
+    private val _appLanguage = MutableStateFlow(prefs.getString("lang", "bn") ?: "bn")
+    val appLanguage: StateFlow<String> = _appLanguage.asStateFlow()
+
+    fun setLanguage(lang: String) {
+        _appLanguage.value = lang
+        prefs.edit().putString("lang", lang).apply()
+    }
+
     // Access role: "owner" (full), "edit" (adds/edits products/sales but no locks), "view" (read-only)
     private val _accessRole = MutableStateFlow("owner")
     val accessRole: StateFlow<String> = _accessRole.asStateFlow()
@@ -309,13 +319,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 val jsonContent = dbObj.toString(2)
                 
                 // Share database file natively (WhatsApp friendly!)
+                val isEn = appLanguage.value == "en"
                 val sendIntent = Intent().apply {
                     action = Intent.ACTION_SEND
                     putExtra(Intent.EXTRA_TEXT, jsonContent)
-                    putExtra(Intent.EXTRA_SUBJECT, "Ahmed Telecom Backup Details")
+                    putExtra(Intent.EXTRA_SUBJECT, if (isEn) "Tushar Tech Backup Details" else "তুষার টেক ব্যাকআপ ফাইল")
                     type = "text/plain"
                 }
-                val shareIntent = Intent.createChooser(sendIntent, "আহমেদ টেলিকম ডাটাবেজ ব্যাকআপ ফাইল হোয়াটসঅ্যাপ বা অন্য মাধ্যমে পাঠান")
+                val shareIntent = Intent.createChooser(sendIntent, if (isEn) "Send Tushar Tech Backup Details via WhatsApp or others" else "তুষার টেক ডাটাবেজ ব্যাকআপ ফাইল হোয়াটসঅ্যাপ বা অন্য মাধ্যমে পাঠান")
                 shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(shareIntent)
             } catch (e: Exception) {
@@ -333,7 +344,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val dbObj = JSONObject(jsonString)
                 if (!dbObj.has("products") && !dbObj.has("sales")) {
-                    showMessage(UiMessage.Error("ভুল ফাইল ফরম্যাট! দয়া করে সঠিক আহমেদ টেলিকম ব্যাকআপ ফাইলটি নির্বাচন করুন।"))
+                    val isEn = appLanguage.value == "en"
+                    showMessage(UiMessage.Error(
+                        if (isEn) "Invalid file format! Please select a valid Tushar Tech backup file."
+                        else "ভুল ফাইল ফরম্যাট! দয়া করে সঠিক তুষার টেক ব্যাকআপ ফাইলটি নির্বাচন করুন।"
+                    ))
                     return@launch
                 }
 
