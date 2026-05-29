@@ -152,6 +152,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         date: String,
         month: String,
         productId: String,
+        customDp: Double,
         sellingPrice: Double,
         customerName: String,
         customerPhone: String,
@@ -185,7 +186,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 memoNo = "$prefix$seq"
             }
 
-            val profit = sellingPrice - product.dp // cashback is 0 initially on direct sale form save
+            val profit = sellingPrice - customDp // cashback is 0 initially on direct sale form save
             val saleId = "sale-${System.currentTimeMillis()}"
             val sale = SaleEntity(
                 id = saleId,
@@ -194,7 +195,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 productId = productId,
                 model = product.model,
                 variant = product.variant,
-                dpAtSale = product.dp,
+                dpAtSale = customDp,
                 sellingPrice = sellingPrice,
                 cashback = 0.0,
                 profit = profit,

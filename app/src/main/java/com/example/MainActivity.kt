@@ -840,8 +840,8 @@ fun SalesTabScreen(
             products = products,
             activeMonth = activeMonthFilter,
             onDismiss = { showAddDialog = false },
-            onSave = { date, month, prodId, sellingPrice, custName, custPhone, imei ->
-                viewModel.addSale(date, month, prodId, sellingPrice, custName, custPhone, imei, lockedMonths)
+            onSave = { date, month, prodId, customDp, sellingPrice, custName, custPhone, imei ->
+                viewModel.addSale(date, month, prodId, customDp, sellingPrice, custName, custPhone, imei, lockedMonths)
                 showAddDialog = false
             }
         )
@@ -985,13 +985,14 @@ fun AddSaleDialog(
     products: List<ProductEntity>,
     activeMonth: String,
     onDismiss: () -> Unit,
-    onSave: (date: String, month: String, productId: String, sellingPrice: Double, custName: String, custPhone: String, imei: String) -> Unit
+    onSave: (date: String, month: String, productId: String, customDp: Double, sellingPrice: Double, custName: String, custPhone: String, imei: String) -> Unit
 ) {
     val context = LocalContext.current
     val activeProducts = remember(products) { products.filter { it.stock > 0 } }
 
     var selectedProdIndex by remember { mutableStateOf(-1) }
     var sellingPrice by remember { mutableStateOf("") }
+    var dpPrice by remember { mutableStateOf("") }
     var customerName by remember { mutableStateOf("") }
     var customerPhone by remember { mutableStateOf("") }
     var imei by remember { mutableStateOf("") }
@@ -1041,6 +1042,7 @@ fun AddSaleDialog(
                                 onClick = {
                                     selectedProdIndex = idx
                                     sellingPrice = String.format(Locale.US, "%.0f", p.mrp)
+                                    dpPrice = String.format(Locale.US, "%.0f", p.dp)
                                     menuExpanded = false
                                 }
                             )
@@ -1084,6 +1086,16 @@ fun AddSaleDialog(
                     onValueChange = { sellingPrice = it; errorMsg = "" },
                     label = { Text("বিক্রয় মূল্য (৳)", fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth().testTag("sale_price_input"),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true
+                )
+
+                // DP (Editable)
+                OutlinedTextField(
+                    value = dpPrice,
+                    onValueChange = { dpPrice = it; errorMsg = "" },
+                    label = { Text("ডিলার মূল্য (DP) (৳) - পরিবর্তনযোগ্য", fontSize = 12.sp) },
+                    modifier = Modifier.fillMaxWidth().testTag("sale_dp_input"),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true
                 )
@@ -1167,8 +1179,11 @@ fun AddSaleDialog(
             Button(
                 onClick = {
                     val priceVal = sellingPrice.toDoubleOrNull()
+                    val dpVal = dpPrice.toDoubleOrNull()
                     if (selectedProdIndex == -1) {
                         errorMsg = "দয়া করে প্রোডাক্ট সিলেক্ট করুন!"
+                    } else if (dpVal == null || dpVal <= 0) {
+                        errorMsg = "ডিলার মূল্য (DP) সঠিক পজিティブ সংখ্যা হতে হবে!"
                     } else if (priceVal == null || priceVal <= 0) {
                         errorMsg = "বিক্রয় মূল্য সঠিক পজিটিভ সংখ্যা হতে হবে!"
                     } else {
@@ -1177,6 +1192,7 @@ fun AddSaleDialog(
                             datePickerState,
                             activeMonth,
                             productSelected.id,
+                            dpVal,
                             priceVal,
                             customerName,
                             customerPhone,
