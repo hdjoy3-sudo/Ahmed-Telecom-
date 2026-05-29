@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer Safe Bounds Center is at (54, 54). Visual size 66dp x 66dp roughly spans 21 to 87 -->
+    
+    <!-- Smartphone Frame -->
+    <path
+        android:pathData="M38,26 C38,23.8 39.8,22 42,22 H66 C68.2,22 70,23.8 70,26 V82 C70,84.2 68.2,86 66,86 H42 C39.8,86 38,84.2 38,82 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:fillColor="#10B981" />
+
+    <!-- Screen Area -->
+    <path
+        android:pathData="M41.5,25.5 H66.5 V75.5 H41.5 Z"
+        android:fillColor="#FFFFFF" />
+
+    <!-- Speaker Grill -->
+    <path
+        android:pathData="M50,23.5 H58"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+
+    <!-- Home indicator knob -->
+    <path
+        android:pathData="M54,81 A2,2 0 1,0 54,81.01 Z"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2" />
+
+    <!-- Ledger Analytics Icons / Details on White Screen -->
+    <!-- Grid Ledger Row 1 -->
+    <path
+        android:pathData="M45,34 H63"
+        android:strokeColor="#2563EB"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    
+    <!-- Grid Ledger Row 2 -->
+    <path
+        android:pathData="M45,42 H57"
+        android:strokeColor="#475569"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M61,42 A1,1 0 1,1 61,42.01 Z"
+        android:strokeColor="#10B981"
+        android:strokeWidth="2.5" />
+
+    <!-- Grid Ledger Row 3 -->
+    <path
+        android:pathData="M45,50 H54"
+        android:strokeColor="#475569"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M60.5,50.5 L63.5,47.5"
+        android:strokeColor="#EF4444"
+        android:strokeWidth="2" />
+    
+    <!-- Grid Ledger Row 4 -->
+    <path
+        android:pathData="M45,58 H61"
+        android:strokeColor="#2563EB"
+        android:strokeWidth="2"
+        android:strokeLineCap="round" />
+
+    <!-- Big Checkmark of Success / Completed Ledger -->
+    <path
+        android:pathData="M47,68 L52,73 L63,62"
+        android:strokeColor="#10B981"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+</vector>

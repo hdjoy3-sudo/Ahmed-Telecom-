@@ -1,0 +1,6 @@
+{
+  "name": "Ahmed Telecom",
+  "description": "Ahmed Telecom Shop Ledger and Running Stock Inventory Management",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
