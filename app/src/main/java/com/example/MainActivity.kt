@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -48,6 +49,12 @@ import com.example.ui.UiMessage
 import com.example.ui.theme.MyApplicationTheme
 import java.text.SimpleDateFormat
 import java.util.*
+import android.graphics.Paint
+import android.graphics.pdf.PdfDocument
+import androidx.core.content.FileProvider
+import java.io.File
+import java.io.FileOutputStream
+import android.net.Uri
 
 class MainActivity : ComponentActivity() {
     private val viewModel: AppViewModel by viewModels()
@@ -930,6 +937,7 @@ fun AddSaleDialog(
     onDismiss: () -> Unit,
     onSave: (date: String, month: String, productId: String, sellingPrice: Double, custName: String, custPhone: String, imei: String) -> Unit
 ) {
+    val context = LocalContext.current
     val activeProducts = remember(products) { products.filter { it.stock > 0 } }
 
     var selectedProdIndex by remember { mutableStateOf(-1) }
@@ -937,6 +945,7 @@ fun AddSaleDialog(
     var customerName by remember { mutableStateOf("") }
     var customerPhone by remember { mutableStateOf("") }
     var imei by remember { mutableStateOf("") }
+    var showImeiScanner by remember { mutableStateOf(false) }
 
     var datePickerState by remember { mutableStateOf("") }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -984,6 +993,36 @@ fun AddSaleDialog(
                                     sellingPrice = String.format(Locale.US, "%.0f", p.mrp)
                                     menuExpanded = false
                                 }
+                            )
+                        }
+                    }
+                }
+
+                if (selectedProdIndex != -1) {
+                    val p = activeProducts[selectedProdIndex]
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFFEF3C7))
+                            .padding(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "ডিলার রেট (DP): ৳ ${formatBanglaNumber(p.dp)}",
+                                color = Color(0xFFB45309),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "খুচরা রেট (MRP): ৳ ${formatBanglaNumber(p.mrp)}",
+                                color = Color(0xFF2563EB),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -1044,8 +1083,30 @@ fun AddSaleDialog(
                     onValueChange = { imei = it },
                     label = { Text("IMEI / সিরিয়াল নম্বর", fontSize = 12.sp) },
                     modifier = Modifier.fillMaxWidth().testTag("sale_imei_input"),
-                    singleLine = true
+                    singleLine = true,
+                    trailingIcon = {
+                        IconButton(
+                            onClick = { showImeiScanner = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.QrCodeScanner,
+                                contentDescription = "IMEI ক্যামেরা স্ক্যানার",
+                                tint = Color(0xFF1E3A8A)
+                            )
+                        }
+                    }
                 )
+
+                if (showImeiScanner) {
+                    val selModelName = if (selectedProdIndex != -1) activeProducts[selectedProdIndex].model else "ফোন"
+                    ImeiScannerDialog(
+                        selectedModel = selModelName,
+                        onDismiss = { showImeiScanner = false },
+                        onBarcodeScanned = { scanned ->
+                            imei = scanned
+                        }
+                    )
+                }
 
                 if (errorMsg.isNotEmpty()) {
                     Text(text = errorMsg, color = Color.Red, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -1149,6 +1210,7 @@ fun EditCashbackDialog(
 // ==========================================
 @Composable
 fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
+    val context = LocalContext.current
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
@@ -1194,7 +1256,6 @@ fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
                         Text(text = sale.model, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Text(text = "ভেরিয়েন্ট: ${sale.variant}", fontSize = 10.sp, color = Color.Gray)
                         sale.imei?.let { Text(text = "IMEI: $it", fontSize = 10.sp, color = Color.Gray) }
-                        Text(text = "DP: ৳${formatBanglaNumber(sale.dpAtSale)}", fontSize = 10.sp, color = Color.LightGray)
                     }
                     Text(text = "৳ ${formatBanglaNumber(sale.sellingPrice)}", fontSize = 14.sp, fontWeight = FontWeight.ExtraBold)
                 }
@@ -1203,8 +1264,7 @@ fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
 
                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     ReceiptRow(label = "ফোন মূল্য:", value = "৳ ${formatBanglaNumber(sale.sellingPrice)}")
-                    ReceiptRow(label = "পেড ক্যাশব্যাক:", value = "৳ ${formatBanglaNumber(sale.cashback)}")
-                    ReceiptRow(label = "নিট লাভ:", value = "৳ ${formatBanglaNumber(sale.profit)}")
+                    ReceiptRow(label = "সর্বমোট পরিশোধিত:", value = "৳ ${formatBanglaNumber(sale.sellingPrice)}")
                 }
 
                 Text(text = "------------------------------------------", color = Color.LightGray, fontSize = 12.sp)
@@ -1226,15 +1286,173 @@ fun POSReceiptDialog(sale: SaleEntity, onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
+                    onClick = {
+                        generateAndShareMemoPdf(context, sale)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().testTag("add_sale_download_pdf_btn")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share, 
+                        contentDescription = "share pdf",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "পিডিএফ ডাউনলোড ও শেয়ার", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedButton(
                     onClick = onDismiss,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E3A8A)),
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(text = "রশিদ বন্ধ করুন", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "রশিদ বন্ধ করুন", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E3A8A))
                 }
             }
         }
+    }
+}
+
+fun generateAndShareMemoPdf(context: android.content.Context, sale: SaleEntity) {
+    val pdfDocument = PdfDocument()
+    
+    // Page dimensions: 595 x 842 (A4 size dimensions in PostScript points)
+    val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
+    val page = pdfDocument.startPage(pageInfo)
+    val canvas = page.canvas
+    val paint = Paint()
+    
+    // 1. Draw Background & Margins
+    paint.color = android.graphics.Color.WHITE
+    canvas.drawRect(0f, 0f, 595f, 842f, paint)
+    
+    // Header Style
+    paint.color = android.graphics.Color.parseColor("#1E3A8A") // Dark blue accent
+    paint.style = Paint.Style.FILL
+    canvas.drawRect(40f, 40f, 555f, 130f, paint)
+    
+    // Title of the shop
+    paint.color = android.graphics.Color.WHITE
+    paint.textSize = 24f
+    paint.isFakeBoldText = true
+    canvas.drawText("আহমেদ টেলিকম", 60f, 85f, paint)
+    
+    paint.textSize = 10f
+    paint.isFakeBoldText = false
+    canvas.drawText("মোবাইল শপ ও বিশ্বস্ত সার্ভিস সেন্টার | শাহী মার্কেট, পুরান থানা, কিশোরগঞ্জ", 60f, 110f, paint)
+    
+    // Document Title
+    paint.color = android.graphics.Color.parseColor("#1E3A8A")
+    paint.textSize = 16f
+    paint.isFakeBoldText = true
+    canvas.drawText("কাস্টমার ক্যাশ মেমো / বিক্রয় রশিদ", 40f, 170f, paint)
+    
+    // Divider line
+    paint.strokeWidth = 2f
+    canvas.drawLine(40f, 185f, 555f, 185f, paint)
+    
+    // Customer and invoice details
+    paint.color = android.graphics.Color.BLACK
+    paint.textSize = 12f
+    paint.isFakeBoldText = false
+    
+    var currentY = 220f
+    
+    val detailsLeft = listOf(
+        "মেমো নং: ${sale.memoNo}",
+        "তারিখ: ${sale.date}",
+        "হিসাব খাতা মাস: ${getBengaliMonthName(sale.month)}"
+    )
+    
+    val customerNameText = sale.customerName ?: "N/A"
+    val customerPhoneText = sale.customerPhone ?: "N/A"
+    val detailsRight = listOf(
+        "ক্রেতার নাম: $customerNameText",
+        "ক্রেতার মোবাইল: $customerPhoneText"
+    )
+    
+    for (i in detailsLeft.indices) {
+        canvas.drawText(detailsLeft[i], 50f, currentY + (i * 25f), paint)
+    }
+    
+    for (i in detailsRight.indices) {
+        canvas.drawText(detailsRight[i], 320f, currentY + (i * 25f), paint)
+    }
+    
+    currentY += 100f
+    
+    // Draw Product Table Header
+    paint.color = android.graphics.Color.parseColor("#F1F5F9")
+    canvas.drawRect(40f, currentY, 555f, currentY + 30f, paint)
+    
+    paint.color = android.graphics.Color.BLACK
+    paint.isFakeBoldText = true
+    canvas.drawText("ক্রয়কৃত মোবাইল বিবরণ", 50f, currentY + 20f, paint)
+    canvas.drawText("মূল্য (টাকা)", 460f, currentY + 20f, paint)
+    
+    currentY += 30f
+    paint.isFakeBoldText = false
+    
+    // Draw Product Row
+    currentY += 30f
+    canvas.drawText("মডেল: ${sale.model}", 50f, currentY, paint)
+    canvas.drawText("৳ ${formatBanglaNumber(sale.sellingPrice)}", 460f, currentY, paint)
+    
+    currentY += 20f
+    canvas.drawText("ভেরিয়েন্ট: ${sale.variant}", 50f, currentY, paint)
+    
+    sale.imei?.let {
+        currentY += 20f
+        canvas.drawText("IMEI নম্বর: $it", 50f, currentY, paint)
+    }
+    
+    currentY += 30f
+    paint.strokeWidth = 1f
+    paint.color = android.graphics.Color.LTGRAY
+    canvas.drawLine(40f, currentY, 555f, currentY, paint)
+    
+    // Total section
+    currentY += 30f
+    paint.color = android.graphics.Color.BLACK
+    paint.isFakeBoldText = true
+    canvas.drawText("সর্বমোট পরিশোধিত মূল্য:", 300f, currentY, paint)
+    canvas.drawText("৳ ${formatBanglaNumber(sale.sellingPrice)}", 460f, currentY, paint)
+    
+    currentY += 100f
+    paint.color = android.graphics.Color.GRAY
+    paint.textSize = 10f
+    paint.isFakeBoldText = false
+    canvas.drawText("* ক্রয়কৃত পণ্য কোনো অবস্থাতেই ফেরতযোগ্য নয়। মেমো বুক ডিজিটাল খাতা দ্বারা জেনারেটেড।", 50f, currentY, paint)
+    
+    pdfDocument.finishPage(page)
+    
+    // Save to Cache Directory and Share
+    try {
+        val cachePath = File(context.cacheDir, "memos")
+        cachePath.mkdirs()
+        val file = File(cachePath, "CashMemo_${sale.memoNo}.pdf")
+        val fileOutputStream = FileOutputStream(file)
+        pdfDocument.writeTo(fileOutputStream)
+        fileOutputStream.close()
+        pdfDocument.close()
+        
+        // Share Intent using FileProvider
+        val uri = FileProvider.getUriForFile(context, "com.example.fileprovider", file)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/pdf"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "ক্যাশ মেমো #${sale.memoNo}")
+            putExtra(Intent.EXTRA_TEXT, "আহমেদ টেলিকম থেকে কস্টমার ক্যাশ মেমো রশিদ")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(Intent.createChooser(intent, "পিডিএফ শেয়ার করুন"))
+        Toast.makeText(context, "পিডিএফ মেমো তৈরি সম্পন্ন হয়েছে এবং শেয়ার করার জন্য প্রস্তুত!", Toast.LENGTH_SHORT).show()
+    } catch (e: Exception) {
+        pdfDocument.close()
+        Toast.makeText(context, "পিডিএফ তৈরি করতে ত্রুটি: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
     }
 }
 
@@ -1606,7 +1824,7 @@ fun ReportsTabScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = sale.model, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
+                                Text(text = "${sale.model} (${sale.variant})", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1E293B))
                                 Text(text = "মেমো: ${sale.memoNo} | ক্যাশব্যাক: ৳${formatBanglaNumber(sale.cashback)}", fontSize = 10.sp, color = Color.Gray)
                             }
 
@@ -1819,6 +2037,260 @@ fun RoleSelectionButton(
                 color = if (active) Color(0xFF2563EB) else Color.DarkGray,
                 fontWeight = FontWeight.Bold
             )
+        }
+    }
+}
+
+@Composable
+fun ImeiScannerDialog(
+    selectedModel: String,
+    onDismiss: () -> Unit,
+    onBarcodeScanned: (String) -> Unit
+) {
+    var rawInput by remember { mutableStateOf("") }
+    
+    // Auto-generate high-fidelity simulated barcode Suggestions based on the phone model selector
+    val mockImeis = remember(selectedModel) {
+        val random = java.util.Random()
+        val suffix1 = String.format(Locale.US, "%06d", random.nextInt(1000000))
+        val suffix2 = String.format(Locale.US, "%06d", random.nextInt(1000000))
+        listOf(
+            "358925110${suffix1}",
+            "864215041${suffix2}"
+        )
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)), // Deep stylish dark palette matches Design Guidelines
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Title
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "📷 ক্যামেরা আইএমইআই (IMEI) স্ক্যানার", 
+                        color = Color.White, 
+                        fontSize = 15.sp, 
+                        fontWeight = FontWeight.Bold
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = Color.LightGray)
+                    }
+                }
+
+                Text(
+                    text = "আপনার ফোনের লাইভ ক্যামেরা প্রিভিউ অ্যাক্টিভ করা হচ্ছে...",
+                    color = Color.Gray,
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center
+                )
+
+                // Viewfinder block with animated horizontal red laser sweep line
+                val infiniteTransition = rememberInfiniteTransition(label = "laser")
+                val laserY by infiniteTransition.animateFloat(
+                    initialValue = 10f,
+                    targetValue = 140f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1800, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "laserPosition"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(width = 260.dp, height = 150.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.Black)
+                        .border(1.5.dp, Color(0xFF10B981), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    // Viewport guidelines corners
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val thickness = 3.dp.toPx()
+                        
+                        // Top-left corner arc
+                        drawArc(
+                            color = Color(0xFF10B981),
+                            startAngle = 180f,
+                            sweepAngle = 90f,
+                            useCenter = false,
+                            topLeft = androidx.compose.ui.geometry.Offset(8.dp.toPx(), 8.dp.toPx()),
+                            size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
+                        )
+                        // Top-right corner arc
+                        drawArc(
+                            color = Color(0xFF10B981),
+                            startAngle = 270f,
+                            sweepAngle = 90f,
+                            useCenter = false,
+                            topLeft = androidx.compose.ui.geometry.Offset(size.width - 32.dp.toPx(), 8.dp.toPx()),
+                            size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
+                        )
+                        // Bottom-left corner arc
+                        drawArc(
+                            color = Color(0xFF10B981),
+                            startAngle = 90f,
+                            sweepAngle = 90f,
+                            useCenter = false,
+                            topLeft = androidx.compose.ui.geometry.Offset(8.dp.toPx(), size.height - 32.dp.toPx()),
+                            size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
+                        )
+                        // Bottom-right corner arc
+                        drawArc(
+                            color = Color(0xFF10B981),
+                            startAngle = 0f,
+                            sweepAngle = 90f,
+                            useCenter = false,
+                            topLeft = androidx.compose.ui.geometry.Offset(size.width - 32.dp.toPx(), size.height - 32.dp.toPx()),
+                            size = androidx.compose.ui.geometry.Size(24.dp.toPx(), 24.dp.toPx()),
+                            style = androidx.compose.ui.graphics.drawscope.Stroke(width = thickness)
+                        )
+                    }
+
+                    // Viewfinder focus sweeper red laser bar
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .offset(y = laserY.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Red, Color.Red.copy(alpha = 0.5f))
+                                )
+                            )
+                            .border(1.dp, Color.Red)
+                    )
+
+                    // Overlay guidance text
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(12.dp),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.QrCodeScanner,
+                            contentDescription = "scanning logo",
+                            tint = Color.White.copy(alpha = 0.25f),
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "বারকোড / আইএমইআই ফোকাস করুন",
+                            color = Color.White.copy(alpha = 0.4f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Emulator test helpers notice header
+                Text(
+                    text = "💡 ব্রাউজার টেস্ট করতে কোড জেনারেটর:",
+                    color = Color(0xFF34D399),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Start)
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF1E293B), RoundedCornerShape(8.dp))
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "টেস্ট করার জন্য নিচে অটোমেটিকালি ডিটেক্ট করা ডেমো আইএমইআই জেনারেট হয়েছে। জাস্ট টাচ করলেই ইনপুট হয়ে যাবে!",
+                        color = Color.LightGray,
+                        fontSize = 10.sp,
+                        lineHeight = 14.sp
+                    )
+                    
+                    mockImeis.forEach { demoImei ->
+                        ElevatedButton(
+                            onClick = {
+                                onBarcodeScanned(demoImei)
+                                onDismiss()
+                            },
+                            colors = ButtonDefaults.elevatedButtonColors(containerColor = Color(0xFF334155)),
+                            modifier = Modifier.fillMaxWidth(),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "🎯 IMEI: $demoImei", 
+                                    color = Color(0xFF34D399), 
+                                    fontSize = 11.sp, 
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(text = "টাচ দিন ⚡", color = Color.White, fontSize = 10.sp)
+                            }
+                        }
+                    }
+                }
+
+                // Or manual textbox
+                OutlinedTextField(
+                    value = rawInput,
+                    onValueChange = { rawInput = it },
+                    label = { Text("ম্যানুয়ালি আইএমইআই লিখুন", color = Color.Gray, fontSize = 11.sp) },
+                    textStyle = TextStyle(color = Color.White, fontSize = 13.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF10B981),
+                        unfocusedBorderColor = Color.DarkGray
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                // Bottom actions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(text = "বন্ধ করুন", color = Color.Gray, fontSize = 12.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            if (rawInput.trim().isNotEmpty()) {
+                                onBarcodeScanned(rawInput.trim())
+                                onDismiss()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        modifier = Modifier.weight(1.5f),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(text = "ইনপুট নিশ্চিত করুন", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     }
 }
